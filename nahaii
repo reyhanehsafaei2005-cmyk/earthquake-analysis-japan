@@ -1,0 +1,42 @@
+import pandas as pd
+from datetime import datetime, timedelta
+
+df = pd.read_csv("earthquake_cleaned.csv")
+df['time'] = pd.to_datetime(df['time'], errors='coerce')
+
+region_stats = df.groupby("region").agg(
+    total_quakes=("mag", "count"),
+    avg_magnitude=("mag", "mean"),
+    min_magnitude=("mag", "min"),
+    max_magnitude=("mag", "max")
+).sort_values("total_quakes", ascending=False)
+print(region_stats)
+
+avg_depth_strong = df.loc[df["mag"] >= 6, "depth"].mean()
+print(avg_depth_strong)
+
+df["danger_score"] = df["mag"] / df["depth"].replace(0, pd.NA)
+dangerous_quakes = df[["region", "time", "mag", "depth", "danger_score"]] \
+    .dropna() \
+    .sort_values("danger_score", ascending=False) \
+    .head(20)
+print(dangerous_quakes)
+
+strong_quakes_per_region = df.loc[df["mag"] >= 6].groupby("region")["mag"].count() \
+    .sort_values(ascending=False)
+print(strong_quakes_per_region)
+
+if df["time"].notna().any():
+    latest_date = df["time"].max()
+    last_30_days = latest_date - timedelta(days=30)
+    recent_data = df[df["time"] >= last_30_days]
+    avg_mag_recent = recent_data["mag"].mean()
+    avg_depth_recent = recent_data["depth"].mean()
+    total_recent = len(recent_data)
+    print(avg_mag_recent, avg_depth_recent, total_recent)
+else:
+    print("No valid time data for monthly analysis.")
+
+if "tokyo_distance" in df.columns:
+    avg_tokyo_distance = df.groupby("region")["tokyo_distance"].mean().sort_values()
+    print(avg_tokyo_distance)
